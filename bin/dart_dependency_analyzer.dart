@@ -66,9 +66,11 @@ Future<Map<String, dynamic>?> getPackageInfo(String packageName) async {
     final response = await http.get(url);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    } else {
+      print('Error fetching package info for $packageName: Status code ${response.statusCode}, Body: ${response.body}');
     }
   } catch (e) {
-    // Silently ignore packages that can\'t be fetched, e.g. flutter from a git dependency
+    // Silently ignore packages that can't be fetched, e.g. flutter from a git dependency
   }
   return null;
 }
@@ -186,6 +188,14 @@ void main(List<String> arguments) async {
       String? latestVersion;
       DateTime? lastUpdated;
 
+      // Populate common details regardless of outdated status
+      final lockPackage = pubspecLockYaml['packages']?[dependency];
+      if (lockPackage != null) {
+        currentVersion = lockPackage['version']?.toString();
+      }
+      latestVersion = packageInfo['latest']?['version'];
+      lastUpdated = published;
+
       if (isDiscontinued) {
         status = AnsiStyles.red('🔴');
         reason = '(discontinued)';
@@ -200,10 +210,6 @@ void main(List<String> arguments) async {
         final currentVersionStr = outdatedInfo['current']?['version'];
         final latestVersionStr = outdatedInfo['latest']?['version'];
         final upgradableVersionStr = outdatedInfo['upgradable']?['version'];
-
-        currentVersion = currentVersionStr;
-        latestVersion = latestVersionStr;
-        lastUpdated = published;
 
         if (currentVersionStr != null && latestVersionStr != null) {
           final currentVersionParsed = Version.parse(currentVersionStr);
