@@ -68,7 +68,7 @@ Future<Map<String, dynamic>?> getPackageInfo(String packageName) async {
       print('Error fetching package info for $packageName: Status code ${response.statusCode}, Body: ${response.body}');
     }
   } catch (e) {
-    // Silently ignore packages that can't be fetched, e.g. flutter from a git dependency
+    // Silently ignore packages that can\'t be fetched, e.g. flutter from a git dependency
   }
   return null;
 }
@@ -171,8 +171,6 @@ void main(List<String> arguments) async {
       final publishedDate = packageInfo['latest']?['published'];
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
-      final likes = packageInfo['likes'] as int?;
-      final downloads = packageInfo['popularity'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
         (p) => p['package'] == dependency,
@@ -281,4 +279,3 @@ void main(List<String> arguments) async {
     printUsage(argParser);
   }
 }
-
