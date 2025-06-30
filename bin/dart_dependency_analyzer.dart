@@ -14,8 +14,13 @@ class PackageReport {
   String status;
   String reason;
   int sortOrder;
+  String? currentVersion;
+  String? latestVersion;
+  DateTime? lastUpdated;
+  int? likes;
+  int? downloads;
 
-  PackageReport(this.name, this.status, this.reason, this.sortOrder);
+  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated, this.likes, this.downloads});
 }
 
 ArgParser buildParser() {
@@ -42,6 +47,11 @@ ArgParser buildParser() {
       'whitelist',
       help: 'A comma-separated list of packages to ignore (they will always be green).',
       defaultsTo: 'flutter,cupertino_icons',
+    )
+    ..addFlag(
+      'show-details',
+      negatable: false,
+      help: 'Show detailed information for each package (current/latest version, last update, likes, downloads).',
     );
 }
 
@@ -89,6 +99,7 @@ void main(List<String> arguments) async {
     final projectPath = results.rest.first;
     final staleThresholdMonths = int.parse(results['stale-threshold-months']);
     final whitelist = results['whitelist'].split(',');
+    final showDetails = results.flag('show-details');
 
     final outdatedResult = Process.runSync(
       'dart',
@@ -160,6 +171,8 @@ void main(List<String> arguments) async {
       final publishedDate = packageInfo['latest']?['published'];
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
+      final likes = packageInfo['likes'] as int?;
+      final downloads = packageInfo['latest']?['downloads'] as int? ?? packageInfo['downloads'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
         (p) => p['package'] == dependency,
@@ -169,6 +182,9 @@ void main(List<String> arguments) async {
       String status;
       String reason = '';
       int sortOrder;
+      String? currentVersion;
+      String? latestVersion;
+      DateTime? lastUpdated;
 
       if (isDiscontinued) {
         status = AnsiStyles.red('🔴');
@@ -185,15 +201,19 @@ void main(List<String> arguments) async {
         final latestVersionStr = outdatedInfo['latest']?['version'];
         final upgradableVersionStr = outdatedInfo['upgradable']?['version'];
 
-        if (currentVersionStr != null && latestVersionStr != null) {
-          final currentVersion = Version.parse(currentVersionStr);
-          final latestVersion = Version.parse(latestVersionStr);
+        currentVersion = currentVersionStr;
+        latestVersion = latestVersionStr;
+        lastUpdated = published;
 
-          if (currentVersion.major < latestVersion.major) {
+        if (currentVersionStr != null && latestVersionStr != null) {
+          final currentVersionParsed = Version.parse(currentVersionStr);
+          final latestVersionParsed = Version.parse(latestVersionStr);
+
+          if (currentVersionParsed.major < latestVersionParsed.major) {
             status = AnsiStyles.red('🔴');
             reason = '(major update available: $currentVersion -> $latestVersion)';
             sortOrder = 3;
-          } else if (currentVersion.minor < latestVersion.minor) {
+          } else if (currentVersionParsed.minor < latestVersionParsed.minor) {
             status = AnsiStyles.yellow('🟡');
             reason = '(minor update available: $currentVersion -> $latestVersion)';
             sortOrder = 2;
@@ -204,7 +224,7 @@ void main(List<String> arguments) async {
           }
 
           if (upgradableVersionStr != null && upgradableVersionStr != latestVersionStr) {
-            final blockerName = findBlocker(depsJson, pubspecLockYaml, dependency, latestVersion);
+            final blockerName = findBlocker(depsJson, pubspecLockYaml, dependency, latestVersionParsed);
             if (blockerName != null) {
               reason += ' (held back by $blockerName)';
               // Find the blocker package in the reports and set its status to red
@@ -226,13 +246,38 @@ void main(List<String> arguments) async {
         sortOrder = 1;
       }
 
-      reports.add(PackageReport(dependency, status, reason, sortOrder));
+      reports.add(PackageReport(dependency, status, reason, sortOrder,
+          currentVersion: currentVersion,
+          latestVersion: latestVersion,
+          lastUpdated: lastUpdated,
+          likes: likes,
+          downloads: downloads));
     }
 
     reports.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     for (final report in reports) {
-      print('${report.status} ${report.name} ${report.reason}');
+      String details = '';
+      if (showDetails) {
+        details += ' (';
+        if (report.currentVersion != null) {
+          details += 'current: ${report.currentVersion}';
+        }
+        if (report.latestVersion != null) {
+          details += ', latest: ${report.latestVersion}';
+        }
+        if (report.lastUpdated != null) {
+          details += ', updated: ${report.lastUpdated!.toIso8601String().substring(0, 10)}';
+        }
+        if (report.likes != null) {
+          details += ', likes: ${report.likes}';
+        }
+        if (report.downloads != null) {
+          details += ', downloads: ${report.downloads}';
+        }
+        details += ')';
+      }
+      print('${report.status} ${report.name} ${report.reason}$details');
     }
   } on FormatException catch (e) {
     print(e.message);
