@@ -18,9 +18,10 @@ class PackageReport {
   String? latestVersion;
   DateTime? lastUpdated;
   int? likes;
+  int? downloads;
   int? grantedPoints;
 
-  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated, this.likes, this.grantedPoints});
+  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated, this.likes, this.downloads, this.grantedPoints});
 }
 
 ArgParser buildParser() {
@@ -189,7 +190,8 @@ void main(List<String> arguments) async {
       final publishedDate = packageInfo['latest']?['published'];
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
-      final likes = packageInfo['likes'] as int?;
+      final likes = packageScore?['likeCount'] as int?;
+      final downloads = packageScore?['downloadCount30Days'] as int?;
       final grantedPoints = packageScore?['grantedPoints'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
@@ -273,6 +275,7 @@ void main(List<String> arguments) async {
           latestVersion: latestVersion,
           lastUpdated: lastUpdated,
           likes: likes,
+          downloads: downloads,
           grantedPoints: grantedPoints));
     }
 
@@ -296,6 +299,9 @@ void main(List<String> arguments) async {
         }
         if (report.grantedPoints != null) {
           details += ', granted points: ${report.grantedPoints}';
+        }
+        if (report.downloads != null) {
+          details += ', downloads: ${report.downloads}';
         }
         details += ')';
       }
