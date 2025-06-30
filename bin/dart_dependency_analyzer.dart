@@ -17,8 +17,10 @@ class PackageReport {
   String? currentVersion;
   String? latestVersion;
   DateTime? lastUpdated;
+  int? likes;
+  int? grantedPoints;
 
-  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated});
+  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated, this.likes, this.grantedPoints});
 }
 
 ArgParser buildParser() {
@@ -69,6 +71,21 @@ Future<Map<String, dynamic>?> getPackageInfo(String packageName) async {
     }
   } catch (e) {
     // Silently ignore packages that can\'t be fetched, e.g. flutter from a git dependency
+  }
+  return null;
+}
+
+Future<Map<String, dynamic>?> getPackageScore(String packageName) async {
+  final url = Uri.parse('https://pub.dev/api/packages/$packageName/score');
+  try {
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print('Error fetching package score for $packageName: Status code ${response.statusCode}, Body: ${response.body}');
+    }
+  } catch (e) {
+    // Silently ignore packages that can\'t be fetched
   }
   return null;
 }
@@ -163,6 +180,7 @@ void main(List<String> arguments) async {
       }
 
       final packageInfo = await getPackageInfo(dependency);
+      final packageScore = await getPackageScore(dependency);
       if (packageInfo == null) {
         continue;
       }
@@ -171,6 +189,9 @@ void main(List<String> arguments) async {
       final publishedDate = packageInfo['latest']?['published'];
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
+      final likes = packageInfo['likes'] as int?;
+      final popularityScore = packageScore?['popularityScore'] as int?;
+      final grantedPoints = packageScore?['grantedPoints'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
         (p) => p['package'] == dependency,
@@ -251,7 +272,10 @@ void main(List<String> arguments) async {
       reports.add(PackageReport(dependency, status, reason, sortOrder,
           currentVersion: currentVersion,
           latestVersion: latestVersion,
-          lastUpdated: lastUpdated));
+          lastUpdated: lastUpdated,
+          likes: likes,
+          popularityScore: popularityScore,
+          grantedPoints: grantedPoints));
     }
 
     reports.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -268,6 +292,12 @@ void main(List<String> arguments) async {
         }
         if (report.lastUpdated != null) {
           details += ', updated: ${report.lastUpdated!.toIso8601String().substring(0, 10)}';
+        }
+        if (report.likes != null) {
+          details += ', likes: ${report.likes}';
+        }
+        if (report.grantedPoints != null) {
+          details += ', granted points: ${report.grantedPoints}';
         }
         details += ')';
       }
