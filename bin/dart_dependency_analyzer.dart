@@ -47,7 +47,7 @@ ArgParser buildParser() {
     ..addOption(
       'whitelist',
       help: 'A comma-separated list of packages to ignore (they will always be green).',
-      defaultsTo: 'flutter,cupertino_icons',
+      defaultsTo: 'flutter,cupertino_icons,flutter_test',
     )
     ..addFlag(
       'show-details',
