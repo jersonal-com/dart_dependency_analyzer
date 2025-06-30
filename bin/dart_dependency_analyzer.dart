@@ -5,14 +5,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ansi_styles/ansi_styles.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:dart_dependency_analyzer/src/blocker_finder.dart';
 
 const String version = '0.0.1';
 
 class PackageReport {
   final String name;
-  final String status;
-  final String reason;
-  final int sortOrder;
+  String status;
+  String reason;
+  int sortOrder;
 
   PackageReport(this.name, this.status, this.reason, this.sortOrder);
 }
@@ -57,7 +58,7 @@ Future<Map<String, dynamic>?> getPackageInfo(String packageName) async {
       return jsonDecode(response.body);
     }
   } catch (e) {
-    // Silently ignore packages that can't be fetched, e.g. flutter from a git dependency
+    // Silently ignore packages that can\'t be fetched, e.g. flutter from a git dependency
   }
   return null;
 }
@@ -116,6 +117,15 @@ void main(List<String> arguments) async {
     }
     final pubspecContent = pubspecFile.readAsStringSync();
     final pubspecYaml = loadYaml(pubspecContent);
+
+    final pubspecLockFile = File('$projectPath/pubspec.lock');
+    if (!pubspecLockFile.existsSync()) {
+      print('Error: pubspec.lock not found in $projectPath. Please run "dart pub get".');
+      exit(1);
+    }
+    final pubspecLockContent = pubspecLockFile.readAsStringSync();
+    final pubspecLockYaml = loadYaml(pubspecLockContent);
+
 
     final allDependencies = <String>{};
     final dependencies = pubspecYaml['dependencies'] as YamlMap?;
@@ -194,9 +204,16 @@ void main(List<String> arguments) async {
           }
 
           if (upgradableVersionStr != null && upgradableVersionStr != latestVersionStr) {
-            final blocker = findBlocker(depsJson, dependency, latestVersion);
-            if (blocker != null) {
-              reason += ' (held back by $blocker)';
+            final blockerName = findBlocker(depsJson, pubspecLockYaml, dependency, latestVersion);
+            if (blockerName != null) {
+              reason += ' (held back by $blockerName)';
+              // Find the blocker package in the reports and set its status to red
+              final blockerReportIndex = reports.indexWhere((r) => r.name == blockerName);
+              if (blockerReportIndex != -1) {
+                reports[blockerReportIndex].status = AnsiStyles.red('🔴');
+                reports[blockerReportIndex].reason = '(blocks $dependency from upgrading)';
+                reports[blockerReportIndex].sortOrder = 3;
+              }
             }
           }
 
@@ -224,44 +241,3 @@ void main(List<String> arguments) async {
   }
 }
 
-String? findBlocker(
-    Map<String, dynamic>? depsJson, String blockedPackage, Version latestVersion) {
-  if (depsJson == null) {
-    return null;
-  }
-
-  final packages = depsJson['packages'] as List?;
-  if (packages == null) {
-    return null;
-  }
-
-  for (final packageData in packages) {
-    if (packageData is! Map<String, dynamic>) continue;
-
-    final packageName = packageData['name'] as String?;
-    if (packageName == null) continue;
-
-    final dependencies = packageData['dependencies'] as List?;
-    if (dependencies == null) continue;
-
-    for (final depName in dependencies) {
-      if (depName is! String) continue;
-
-      if (depName == blockedPackage) {
-        final versionConstraint = packageData['version'] as String?;
-        if (versionConstraint != null) {
-          try {
-            final constraint = VersionConstraint.parse(versionConstraint);
-            if (!constraint.allows(latestVersion)) {
-              return packageName;
-            }
-          } catch (e) {
-            // Ignore invalid version constraints
-          }
-        }
-      }
-    }
-  }
-
-  return null;
-}
