@@ -17,10 +17,8 @@ class PackageReport {
   String? currentVersion;
   String? latestVersion;
   DateTime? lastUpdated;
-  int? likes;
-  int? downloads;
 
-  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated, this.likes, this.downloads});
+  PackageReport(this.name, this.status, this.reason, this.sortOrder, {this.currentVersion, this.latestVersion, this.lastUpdated});
 }
 
 ArgParser buildParser() {
@@ -174,7 +172,7 @@ void main(List<String> arguments) async {
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
       final likes = packageInfo['likes'] as int?;
-      final downloads = packageInfo['latest']?['downloads'] as int? ?? packageInfo['downloads'] as int?;
+      final downloads = packageInfo['popularity'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
         (p) => p['package'] == dependency,
@@ -255,9 +253,7 @@ void main(List<String> arguments) async {
       reports.add(PackageReport(dependency, status, reason, sortOrder,
           currentVersion: currentVersion,
           latestVersion: latestVersion,
-          lastUpdated: lastUpdated,
-          likes: likes,
-          downloads: downloads));
+          lastUpdated: lastUpdated));
     }
 
     reports.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -274,12 +270,6 @@ void main(List<String> arguments) async {
         }
         if (report.lastUpdated != null) {
           details += ', updated: ${report.lastUpdated!.toIso8601String().substring(0, 10)}';
-        }
-        if (report.likes != null) {
-          details += ', likes: ${report.likes}';
-        }
-        if (report.downloads != null) {
-          details += ', downloads: ${report.downloads}';
         }
         details += ')';
       }
