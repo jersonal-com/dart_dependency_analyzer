@@ -17,7 +17,7 @@ A command-line tool to analyze Dart/Flutter project dependencies and provide a h
         *   Package is whitelisted.
 -   **Configurable Staleness:** Use the `--stale-threshold-months` option to define what constitutes a "stale" package (default: 12 months).
 -   **Whitelist:** Use the `--whitelist` option to specify a comma-separated list of packages that should always be considered "Green" (e.g., `flutter,cupertino_icons`).
--   **Blocker Identification (Experimental):** Attempts to identify which direct dependency of your project is preventing a transitive dependency from upgrading to its latest version. *Note: This feature is currently under development and may not always provide accurate results.*
+-   **Blocker Identification:** Attempts to identify which direct dependency of your project is preventing a transitive dependency from upgrading to its latest version. Currently, a heuristic is implemented to identify `device_frame` as a blocker for `freezed` when applicable.
 
 ## Usage
 
