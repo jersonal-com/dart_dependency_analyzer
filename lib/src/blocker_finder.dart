@@ -21,7 +21,7 @@ String? findBlocker(Map<String, dynamic>? depsJson, YamlMap pubspecLockYaml, Str
       orElse: () => null,
     );
 
-    if (devicePackageData != null) {
+    if (deviceFramePackageData != null) {
       final deviceFrameDependencies = deviceFramePackageData['dependencies'] as List?;
       if (deviceFrameDependencies != null && deviceFrameDependencies.contains('freezed_annotation')) {
         // device_frame depends on freezed_annotation.
