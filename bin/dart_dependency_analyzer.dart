@@ -190,7 +190,6 @@ void main(List<String> arguments) async {
       final published =
           publishedDate != null ? DateTime.parse(publishedDate) : null;
       final likes = packageInfo['likes'] as int?;
-      final popularityScore = packageScore?['popularityScore'] as int?;
       final grantedPoints = packageScore?['grantedPoints'] as int?;
 
       final outdatedInfo = outdatedPackages.firstWhere(
@@ -274,7 +273,6 @@ void main(List<String> arguments) async {
           latestVersion: latestVersion,
           lastUpdated: lastUpdated,
           likes: likes,
-          popularityScore: popularityScore,
           grantedPoints: grantedPoints));
     }
 
