@@ -66,6 +66,16 @@ ArgParser buildParser() {
       negatable: false,
       help:
           'Show detailed information for each package (current/latest version, last update, likes, downloads).',
+    )
+    ..addOption(
+      'min-likes',
+      defaultsTo: '100',
+      help: 'The minimum number of likes for a package to be considered healthy.',
+    )
+    ..addOption(
+      'min-downloads',
+      defaultsTo: '10000',
+      help: 'The minimum number of downloads for a package to be considered healthy.',
     );
 }
 
@@ -146,6 +156,8 @@ void main(List<String> arguments) async {
     final staleThresholdMonths = int.parse(results['stale-threshold-months']);
     final whitelist = results['whitelist'].split(',');
     final showDetails = results.flag('show-details');
+    final minLikes = int.parse(results['min-likes']);
+    final minDownloads = int.parse(results['min-downloads']);
 
     await analyzeDependencies(
       projectPath,
@@ -153,6 +165,8 @@ void main(List<String> arguments) async {
       whitelist,
       showDetails,
       verbose,
+      minLikes,
+      minDownloads,
     );
   } on FormatException catch (e) {
     print(e.message);
@@ -167,6 +181,8 @@ Future<void> analyzeDependencies(
   List<String> whitelist,
   bool showDetails,
   bool verbose,
+  int minLikes,
+  int minDownloads,
 ) async {
   final outdatedResult = Process.runSync('dart', [
     'pub',
@@ -286,9 +302,6 @@ Future<void> analyzeDependencies(
       orElse: () => null,
     );
 
-    String status;
-    String reason = '';
-    int sortOrder;
     String? currentVersion;
     String? latestVersion;
     DateTime? lastUpdated;
@@ -301,80 +314,109 @@ Future<void> analyzeDependencies(
     latestVersion = packageInfo['latest']?['version'];
     lastUpdated = published;
 
+    String currentStatus = AnsiStyles.green('🟢');
+    String currentReason = '';
+    int currentSortOrder = 1;
+
     if (isDiscontinued) {
-      status = AnsiStyles.red('🔴');
-      reason = '(discontinued)';
-      sortOrder = 3;
+      currentStatus = AnsiStyles.red('🔴');
+      currentReason = '(discontinued)';
+      currentSortOrder = 3;
     } else if (published != null &&
         DateTime.now().difference(published).inDays >
             staleThresholdMonths * 30) {
-      status = AnsiStyles.red('🔴');
-      reason =
+      currentStatus = AnsiStyles.red('🔴');
+      currentReason =
           '(stale, last updated ${published.toIso8601String().substring(0, 10)})';
-      sortOrder = 3;
-    } else if (outdatedInfo != null) {
-      final currentVersionStr = outdatedInfo['current']?['version'];
-      final latestVersionStr = outdatedInfo['latest']?['version'];
-      final upgradableVersionStr = outdatedInfo['upgradable']?['version'];
+      currentSortOrder = 3;
+    }
 
-      if (currentVersionStr != null && latestVersionStr != null) {
-        final currentVersionParsed = Version.parse(currentVersionStr);
-        final latestVersionParsed = Version.parse(latestVersionStr);
-
-        if (currentVersionParsed.major < latestVersionParsed.major) {
-          status = AnsiStyles.red('🔴');
-          reason =
-              '(major update available: $currentVersion -> $latestVersion)';
-          sortOrder = 3;
-        } else if (currentVersionParsed.minor < latestVersionParsed.minor) {
-          status = AnsiStyles.yellow('🟡');
-          reason =
-              '(minor update available: $currentVersion -> $latestVersion)';
-          sortOrder = 2;
+    if (currentSortOrder < 3) { // Only check for yellow conditions if not already red
+      if (downloads != null && downloads < minDownloads) {
+        currentStatus = AnsiStyles.yellow('🟡');
+        currentReason = '(low downloads: $downloads)';
+        currentSortOrder = 2;
+      }
+      if (likes != null && likes < minLikes) {
+        if (currentSortOrder < 2) { // Only set to yellow if not already yellow or red
+          currentStatus = AnsiStyles.yellow('🟡');
+          currentReason = '(low likes: $likes)';
+          currentSortOrder = 2;
+        } else if (currentReason.isNotEmpty) {
+          currentReason += ', (low likes: $likes)';
         } else {
-          status = AnsiStyles.green('🟢');
-          reason =
-              '(patch update available: $currentVersion -> $latestVersion)';
-          sortOrder = 1;
+          currentReason = '(low likes: $likes)';
         }
+      }
 
-        if (upgradableVersionStr != null &&
-            upgradableVersionStr != latestVersionStr) {
-          final blockerName = findBlocker(
-            depsJson,
-            pubspecLockYaml,
-            dependency,
-            latestVersionParsed,
-          );
-          if (blockerName != null) {
-            reason += ' (held back by $blockerName)';
-            // Find the blocker package in the reports and set its status to red
-            final blockerReportIndex = reports.indexWhere(
-              (r) => r.name == blockerName,
+      if (outdatedInfo != null) {
+        final currentVersionStr = outdatedInfo['current']?['version'];
+        final latestVersionStr = outdatedInfo['latest']?['version'];
+        final upgradableVersionStr = outdatedInfo['upgradable']?['version'];
+
+        if (currentVersionStr != null && latestVersionStr != null) {
+          final currentVersionParsed = Version.parse(currentVersionStr);
+          final latestVersionParsed = Version.parse(latestVersionStr);
+
+          if (currentVersionParsed.major < latestVersionParsed.major) {
+            currentStatus = AnsiStyles.red('🔴');
+            currentReason =
+                '(major update available: $currentVersion -> $latestVersion)';
+            currentSortOrder = 3;
+          } else if (currentVersionParsed.minor < latestVersionParsed.minor) {
+            if (currentSortOrder < 2) { // Only set to yellow if not already yellow or red
+              currentStatus = AnsiStyles.yellow('🟡');
+              currentReason =
+                  '(minor update available: $currentVersion -> $latestVersion)';
+              currentSortOrder = 2;
+            } else if (currentReason.isNotEmpty) {
+              currentReason += ', (minor update available: $currentVersion -> $latestVersion)';
+            } else {
+              currentReason = '(minor update available: $currentVersion -> $latestVersion)';
+            }
+          } else {
+            if (currentSortOrder < 1) { // Only set to green if not already yellow or red
+              currentStatus = AnsiStyles.green('🟢');
+              currentReason =
+                  '(patch update available: $currentVersion -> $latestVersion)';
+              currentSortOrder = 1;
+            } else if (currentReason.isEmpty) { // Only add patch update reason if no other reason exists
+              currentReason = '(patch update available: $currentVersion -> $latestVersion)';
+            }
+          }
+
+          if (upgradableVersionStr != null &&
+              upgradableVersionStr != latestVersionStr) {
+            final blockerName = findBlocker(
+              depsJson,
+              pubspecLockYaml,
+              dependency,
+              latestVersionParsed,
             );
-            if (blockerReportIndex != -1) {
-              reports[blockerReportIndex].status = AnsiStyles.red('🔴');
-              reports[blockerReportIndex].reason =
-                  '(blocks $dependency from upgrading)';
-              reports[blockerReportIndex].sortOrder = 3;
+            if (blockerName != null) {
+              currentReason += ' (held back by $blockerName)';
+              // Find the blocker package in the reports and set its status to red
+              final blockerReportIndex = reports.indexWhere(
+                (r) => r.name == blockerName,
+              );
+              if (blockerReportIndex != -1) {
+                reports[blockerReportIndex].status = AnsiStyles.red('🔴');
+                reports[blockerReportIndex].reason =
+                    '(blocks $dependency from upgrading)';
+                reports[blockerReportIndex].sortOrder = 3;
+              }
             }
           }
         }
-      } else {
-        status = AnsiStyles.green('🟢');
-        sortOrder = 1;
       }
-    } else {
-      status = AnsiStyles.green('🟢');
-      sortOrder = 1;
     }
 
     reports.add(
       PackageReport(
         dependency,
-        status,
-        reason,
-        sortOrder,
+        currentStatus,
+        currentReason,
+        currentSortOrder,
         currentVersion: currentVersion,
         latestVersion: latestVersion,
         lastUpdated: lastUpdated,
