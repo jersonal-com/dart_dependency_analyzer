@@ -25,6 +25,11 @@ This document chronicles the development process of the `dart_dependency_analyze
 -   **Objective:** Implement the Green/Yellow/Red traffic light system based on configurable rules and display colored output.
 -   **Decisions:** Used `ansi_styles` for colored terminal output. Defined rules for Red (discontinued, stale, major update), Yellow (minor update), and Green (patch update, up-to-date, whitelisted). Implemented `--stale-threshold-months` and `--whitelist` options.
 
+### Iteration 4: Handling Git and Path Dependencies & Improved Error Handling
+
+-   **Objective:** Gracefully handle git and path dependencies, and improve error reporting for `pub.dev` API calls.
+-   **Decisions:** Modified `getPackageInfo` to check the dependency source from `pubspec.lock`. If the source is `git`, `path`, or if `pub.dev` information cannot be fetched, the package is reported with a grey status. Refactored `main` function into `analyzeDependencies` for better readability and maintainability.
+
 ### Blocker Identification (Ongoing Challenge)
 
 -   **Objective:** Identify the direct dependency of the root project that is preventing a transitive dependency from upgrading.

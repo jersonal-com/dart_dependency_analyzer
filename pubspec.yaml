@@ -1,7 +1,8 @@
 name: dart_dependency_analyzer
 description: A sample command-line application with basic argument parsing.
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+homepage: https://github.com/jersonal-com/dart_dependency_analyzer
+repository: https://github.com/jersonal-com/dart_dependency_analyzer
 
 environment:
   sdk: ^3.8.1

@@ -1,7 +1,12 @@
 import 'package:yaml/yaml.dart';
 import 'package:pub_semver/pub_semver.dart';
 
-String? findBlocker(Map<String, dynamic>? depsJson, YamlMap pubspecLockYaml, String blockedPackage, Version latestVersion) {
+String? findBlocker(
+  Map<String, dynamic>? depsJson,
+  YamlMap pubspecLockYaml,
+  String blockedPackage,
+  Version latestVersion,
+) {
   if (depsJson == null) {
     return null;
   }
@@ -22,11 +27,17 @@ String? findBlocker(Map<String, dynamic>? depsJson, YamlMap pubspecLockYaml, Str
     );
 
     if (deviceFramePackageData != null) {
-      final deviceFrameDependencies = deviceFramePackageData['dependencies'] as List?;
-      if (deviceFrameDependencies != null && deviceFrameDependencies.contains('freezed_annotation')) {
+      final deviceFrameDependencies =
+          deviceFramePackageData['dependencies'] as List?;
+      if (deviceFrameDependencies != null &&
+          deviceFrameDependencies.contains('freezed_annotation')) {
         // device_frame depends on freezed_annotation.
         // Based on the problem description, we assume device_frame is the blocker.
-        return _findDirectRootDependency(depsJson, rootPackageName, 'device_frame');
+        return _findDirectRootDependency(
+          depsJson,
+          rootPackageName,
+          'device_frame',
+        );
       }
     }
   }
@@ -56,7 +67,11 @@ String? findBlocker(Map<String, dynamic>? depsJson, YamlMap pubspecLockYaml, Str
             if (packageName == rootPackageName) {
               return 'the app itself';
             }
-            return _findDirectRootDependency(depsJson, rootPackageName, packageName);
+            return _findDirectRootDependency(
+              depsJson,
+              rootPackageName,
+              packageName,
+            );
           }
         } catch (e) {
           // Ignore invalid version constraints
@@ -69,7 +84,11 @@ String? findBlocker(Map<String, dynamic>? depsJson, YamlMap pubspecLockYaml, Str
 }
 
 // Helper function to find the direct dependency of the root that leads to a given transitive package
-String? _findDirectRootDependency(Map<String, dynamic> depsJson, String? rootPackageName, String targetTransitivePackage) {
+String? _findDirectRootDependency(
+  Map<String, dynamic> depsJson,
+  String? rootPackageName,
+  String targetTransitivePackage,
+) {
   if (rootPackageName == null) {
     return null;
   }
