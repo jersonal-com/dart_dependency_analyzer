@@ -22,6 +22,16 @@ A command-line tool to analyze Dart/Flutter project dependencies and provide a h
 -   **Blocker Identification:** Attempts to identify which direct dependency of your project is preventing a transitive dependency from upgrading to its latest version.
 -   **Show Details:** Use the `--show-details` flag to display additional information for each package, including current and latest version, last update date, likes, and downloads.
 
+## Installation
+
+To install the `dart_dependency_analyzer` globally, navigate to the project root directory and run:
+
+```bash
+dart pub global activate --source path .
+```
+
+This will make the `dart_dependency_analyzer` command available in your terminal.
+
 ## Usage
 
 To run the analyzer, navigate to the `dart_dependency_analyzer` directory and execute:
@@ -30,12 +40,22 @@ To run the analyzer, navigate to the `dart_dependency_analyzer` directory and ex
 dart run bin/dart_dependency_analyzer.dart <path_to_your_dart_project> [options]
 ```
 
+Alternatively, if you have globally activated the package, you can run:
+
+```bash
+dart_dependency_analyzer <path_to_your_dart_project> [options]
+```
+
 **Example:**
 
 ```bash
 dart run bin/dart_dependency_analyzer.dart ../ai_helper --stale-threshold-months=6 --whitelist=flutter,cupertino_icons
 ```
 
-## Development
+Or, if globally activated:
 
-This project is being developed iteratively. The goal is to provide a robust tool for dependency management.
+```bash
+dart_dependency_analyzer ../ai_helper --stale-threshold-months=6 --whitelist=flutter,cupertino_icons
+```
+
+
