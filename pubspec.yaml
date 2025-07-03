@@ -1,5 +1,5 @@
 name: dart_dependency_analyzer
-description: A sample command-line application with basic argument parsing.
+description: A command line program to analyze dependency problems and blocking packages. 
 version: 0.0.1
 homepage: https://github.com/jersonal-com/dart_dependency_analyzer
 repository: https://github.com/jersonal-com/dart_dependency_analyzer
